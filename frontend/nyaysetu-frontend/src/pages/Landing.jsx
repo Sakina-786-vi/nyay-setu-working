@@ -346,7 +346,7 @@ export default function Landing() {
                             </p>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                        <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem' }}>
                             {[
                                 { icon: Bot, title: 'AI Legal Assistant', desc: '24/7 AI-powered chatbot for instant legal guidance', color: '#3F5DCC' },
                                 { icon: BookOpen, title: 'Constitution Reader', desc: 'Browse Indian Constitution with intelligent search and Q&A', color: '#7C5CFF' },
@@ -364,7 +364,7 @@ export default function Landing() {
                                     transition={{ delay: i * 0.07 }}
                                     whileHover={{ y: -5 }}
                                     style={{
-                                        padding: '2rem',
+                                        padding: '2.25rem',
                                         background: 'var(--bg-main)',
                                         border: '1px solid var(--border-light)',
                                         borderRadius: '16px',
@@ -375,15 +375,15 @@ export default function Landing() {
                                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.boxShadow = 'none'; }}
                                 >
                                     <div style={{
-                                        width: '48px', height: '48px', borderRadius: '14px',
+                                        width: '52px', height: '52px', borderRadius: '14px',
                                         background: f.color + '12',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        marginBottom: '1rem',
+                                        marginBottom: '1.1rem',
                                     }}>
-                                        <FeatureIcon size={24} style={{ color: f.color }} />
+                                        <FeatureIcon size={26} style={{ color: f.color }} />
                                     </div>
-                                    <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '0.6rem' }}>{f.title}</h3>
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.65', margin: 0 }}>{f.desc}</p>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '0.65rem' }}>{f.title}</h3>
+                                    <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', lineHeight: '1.7', margin: 0 }}>{f.desc}</p>
                                 </motion.div>
                             );})}
                         </div>
@@ -489,9 +489,11 @@ export default function Landing() {
                     .hero-grid { grid-template-columns: 1fr !important; }
                     .hero-grid > div:last-child { display: none; }
                     .quick-cards-grid { grid-template-columns: 1fr !important; }
+                    .features-grid { grid-template-columns: repeat(2, 1fr) !important; }
                 }
                 @media (max-width: 600px) {
                     .quick-cards-grid { grid-template-columns: 1fr !important; }
+                    .features-grid { grid-template-columns: 1fr !important; }
                 }
             `}</style>
         </div>
