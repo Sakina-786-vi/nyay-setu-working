@@ -41,7 +41,13 @@ async def call_groq_async(question: str) -> dict:
             max_tokens=800
         )
         answer = response.choices[0].message.content.strip()
-        return {"question": question, "answer": answer, "source": "groq", "error": None}
+        return {
+            "question": question,
+            "answer": answer,
+            "source": "groq",
+            "cached": False,
+            "error": None
+        }
     except Exception as e:
         print(f"[Research/Groq] Error: {e}")
         return {"question": question, "answer": "", "source": "groq", "error": str(e)}
@@ -64,7 +70,13 @@ async def call_gemini_async(question: str) -> dict:
             )
         )
         answer = response.text.strip()
-        return {"question": question, "answer": answer, "source": "gemini", "error": None}
+        return {
+            "question": question,
+            "answer": answer,
+            "source": "gemini",
+            "cached": False,
+            "error": None
+        }
     except Exception as e:
         print(f"[Research/Gemini] Error: {e}")
         # Fallback to Groq on Gemini failure
