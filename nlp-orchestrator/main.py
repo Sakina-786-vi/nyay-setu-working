@@ -29,7 +29,7 @@ from config import FRONTEND_ORIGIN, GROQ_API_KEY, GROQ_MODEL_FAST, GEMINI_API_KE
 from decomposer import decompose_query
 from router import route_questions
 from research import run_parallel_research
-from synthesizer import synthesize_answers
+from synthesizer import synthesize_answers, stream_synthesize_answers
 from validators.citation_validator import validate_citations_from_text
 from avatar_speech import get_interim_messages, convert_to_hinglish, detect_domain
 from services.kanoon_search import build_kanoon_context
@@ -153,26 +153,13 @@ async def legal_reasoning_pipeline(query: str, language: str):
         yield sse_event("synthesis_start", {})
         yield sse_event("avatar_update", {"message": "Sab information mila di, ab aapke liye summary bana raha hoon..."})
 
-        logger.info("[Layer 4] Synthesizing...")
-        synthesized_md = await synthesize_answers(query, results)
-
-        try:
-            validation_results = validate_citations_from_text(synthesized_md)
-            if validation_results:
-                logger.info("[Layer 4] Citation validation results: %s", validation_results)
-        except Exception as e:
-            logger.warning("[Layer 4] Citation validation failed (non-blocking): %s", e)
-            validation_results = []
-
-        # ── Layer 5b: Hinglish Conversion ────────────────────────
-        logger.info("[Layer 5] Converting to Hinglish...")
-        hinglish_dialogue = await convert_to_hinglish(synthesized_md)
-
-        yield sse_event("final_answer", {
-            "markdown": synthesized_md,
-            "hinglish": hinglish_dialogue,
-            "citation_validation": validation_results
-        })
+        logger.info("[Layer 4] Synthesizing with streaming...")
+        
+        # Stream synthesis tokens directly
+        async for token in stream_synthesize_answers(query, results):
+            yield sse_event("synthesis_token", {"chunk": token})
+        
+        logger.info("[Layer 4] Synthesis complete")
 
         yield sse_event("done", {"message": "Research complete"})
         logger.info("[Pipeline] Done ✓")
@@ -461,27 +448,19 @@ async def deep_research_pipeline(query: str, language: str):
         if model_choice == "groq" or (
             model_choice == "gemini" and not gemini_client
         ):
-
-            response = await groq_client.chat.completions.create(
-                model=GROQ_MODEL_FAST,
+            # Stream tokens directly from Groq
+            logger.info("[Deep Research] Streaming from Groq...")
+            async for token in stream_groq_chat(
                 messages=[
                     {"role": "system", "content": grounded_prompt},
                     {"role": "user", "content": query}
                 ],
+                model=GROQ_MODEL_FAST,
                 temperature=0.2,
                 max_tokens=2048
-            )
-
-            ai_answer = response.choices[0].message.content.strip()
-
-        # Stream reasoning text in chunks for live display
-        if ai_answer:
-            words = ai_answer.split()
-            chunk_size = 8
-            for i in range(0, len(words), chunk_size):
-                chunk = " ".join(words[i:i + chunk_size])
-                yield sse_event("reasoning", {"text": chunk})
-                await asyncio.sleep(0.1)  # Small delay for streaming effect
+            ):
+                yield sse_event("reasoning", {"text": token})
+                ai_answer = (ai_answer or "") + token
 
         yield sse_event("stage", {
             "stage": "reasoning",
