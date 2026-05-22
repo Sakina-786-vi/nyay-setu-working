@@ -17,6 +17,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
 
 const api = axios.create({
     baseURL: API_BASE_URL,
+    timeout: 10000, // 10s timeout — prevents infinite loading when backend is unreachable
     headers: {
         'Content-Type': 'application/json',
     },
@@ -67,6 +68,12 @@ export const caseAPI = {
     delete: (id) => api.delete(`/api/cases/${id}`),
     submitDraft: (id, draftContent) => api.post(`/api/cases/${id}/submit-draft`, { draftContent }),
     reviewDraft: (id, approved, comments) => api.post(`/api/cases/${id}/review-draft`, { approved, comments }),
+    fileInCourt: (id) => api.post(`/api/cases/${id}/file-in-court`),
+    startHearings: (id) => api.post(`/api/cases/${id}/start-hearings`),
+    startEvidence: (id) => api.post(`/api/cases/${id}/start-evidence`),
+    startArguments: (id) => api.post(`/api/cases/${id}/start-arguments`),
+    startJudgment: (id) => api.post(`/api/cases/${id}/start-judgment`),
+    deliverVerdict: (id, verdictDetails) => api.post(`/api/cases/${id}/deliver-verdict`, { verdictDetails }),
 };
 
 // Document API
@@ -106,6 +113,12 @@ export const documentAPI = {
     downloadCertificate: (id) => api.get(`/api/documents/${id}/certificate`, { responseType: 'blob' })
 };
 
+// Document Generation API (AI-powered legal document drafting)
+export const documentGenerateAPI = {
+    preview: (data) => api.post('/api/documents/generate/preview', data),
+    download: (data) => api.post('/api/documents/generate/download', data, { responseType: 'blob' }),
+};
+
 // Hearing API
 export const hearingAPI = {
     schedule: (hearingData) => api.post('/api/hearings/schedule', hearingData),
@@ -130,7 +143,7 @@ export const meetingAPI = {
 export const vakilFriendAPI = {
     startSession: () => api.post('/api/vakil-friend/start'),
     startCaseSession: (caseId) => api.post(`/api/vakil-friend/case/${caseId}/start`),
-    sendMessage: (sessionId, message) => api.post(`/api/vakil-friend/chat/${sessionId}`, { message }),
+    sendMessage: (sessionId, payload) => api.post(`/api/vakil-friend/chat/${sessionId}`, payload),
     completeSession: (sessionId) => api.post(`/api/vakil-friend/complete/${sessionId}`),
     getSession: (sessionId) => api.get(`/api/vakil-friend/session/${sessionId}`),
     getSessions: () => api.get('/api/vakil-friend/sessions'),
