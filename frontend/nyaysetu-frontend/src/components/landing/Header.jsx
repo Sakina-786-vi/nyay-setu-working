@@ -1,6 +1,6 @@
 // redesigned header — dark mode toggle, portal dropdown, sticky scroll, mobile drawer
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Scale, Menu, X, Globe, Sun, Moon, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -18,16 +18,19 @@ const LANGUAGES = [
     { code: 'en', label: 'English', flag: 'EN' },
     { code: 'hi', label: 'हिंदी', flag: 'HI' },
     { code: 'mr', label: 'मराठी', flag: 'MR' },
+    { code: 'ta', label: 'தமிழ்', flag: 'TA' },
+    { code: 'te', label: 'తెలుగు', flag: 'TE' }
 ];
 
 export default function Header({ hideAuthButtons = false }) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const navigate = useNavigate();
+    const { t, i18n } = useTranslation('common');
     const [showAIModal, setShowAIModal] = useState(false);
     const [roleOpen, setRoleOpen] = useState(false);
     const [langOpen, setLangOpen] = useState(false);
     const { theme, toggleTheme } = useTheme();
-    const { t, i18n } = useTranslation('common');
     const location = useLocation();
 
     useEffect(() => {
