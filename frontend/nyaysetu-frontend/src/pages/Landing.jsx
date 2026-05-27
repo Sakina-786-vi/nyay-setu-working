@@ -2,7 +2,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { UserPlus, FileText, Zap, ArrowRight, Users, Star, CheckCircle, Smartphone, Bot, BookOpen, Video, ShieldCheck, Cpu, Cuboid } from 'lucide-react';
+import { UserPlus, FileText, Zap, ArrowRight, Users, Star, CheckCircle, Download, Bot, BookOpen, Video, ShieldCheck, Cpu, Cuboid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Header from '../components/landing/Header';
 import Footer from '../components/landing/Footer';
@@ -189,12 +189,12 @@ export default function Landing() {
                                 </Link>
 
                                 <motion.button
-                                    whileHover={{ scale: 1.08 }}
+                                    whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={handleInstall}
                                     title={t('hero.installApp')}
                                     style={{
-                                        width: '48px', height: '48px',
+                                        gap:'0.5rem',padding:'0.8rem 1rem',
                                         borderRadius: '12px',
                                         border: '1px solid var(--border-medium)',
                                         background: 'var(--bg-surface)',
@@ -202,9 +202,12 @@ export default function Landing() {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         cursor: 'pointer',
                                         boxShadow: 'var(--shadow-sm)',
+                                        fontWeight:'600',
+                                        whiteSpace:'nowrap',
                                     }}
                                 >
-                                    <Smartphone size={20} />
+                                    <Download size={18} />
+                                    {t('hero.installApp')}
                                 </motion.button>
                             </div>
 
