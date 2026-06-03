@@ -46,7 +46,7 @@
 
 <hr/>
 
-## Why Nyay Saarthi?
+## Why Nyay Setu?
 
 The Indian judiciary faces a systemic crisis that affects hundreds of millions of citizens:
 
@@ -327,12 +327,28 @@ For environment variables, copy `.env.example` to `.env` and fill in your values
 
 ## Documentation
 
+### Getting Started
 | Document | Description |
 |---|---|
+| [API Quick Start](./API_QUICKSTART.md) | 5-minute introduction to APIs (start here!) |
 | [Setup Guide](./docs/setup.md) | Full database setup, environment variables, and Docker configuration |
 | [Architecture Overview](./docs/architecture/overview.md) | System design, component diagrams, and data flow |
+
+### API Documentation & Integration
+| Document | Description |
+|---|---|
+| [OpenAPI/Swagger Spec](./openapi.yaml) | Complete API specification in OpenAPI 3.0 format |
+| [API Testing Guide](./API_TESTING_GUIDE.md) | Comprehensive guide for testing APIs with Postman, cURL, Python, JavaScript |
+| [API Endpoints Reference](./API_ENDPOINTS_COMPREHENSIVE.md) | Detailed documentation of all 100+ endpoints with request/response schemas |
+| [API Quick Reference](./API_QUICK_REFERENCE.md) | Quick lookup table for endpoints by user role and service |
+| [API Integration Checklist](./API_INTEGRATION_CHECKLIST.md) | Step-by-step checklist for integrating APIs into applications |
+| [Postman Collection](./Nyay_Setu_API_Collection.postman_collection.json) | Ready-to-import Postman collection with all endpoints and examples |
+
+### Additional Resources
+| Document | Description |
+|---|---|
 | [AI Integration Guide](./AI_INTEGRATION_GUIDE.md) | Groq API and NLP orchestrator technical deep-dive |
-| [API Documentation](./SYSTEM_DOCUMENTATION.md) | All REST endpoints with request and response specifications |
+| [System Documentation](./SYSTEM_DOCUMENTATION.md) | Existing REST endpoints and specifications |
 | [Contributing Guidelines](./CONTRIBUTING.md) | Branching strategy, commit conventions, and PR workflow |
 
 <hr/>

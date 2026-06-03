@@ -1,7 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
-
 import { useTheme } from '../contexts/ThemeContext';
-import { Search, BookOpen, Globe, Download, Bookmark, MessageCircle, Share2, X, BookmarkPlus, Loader2 } from 'lucide-react';
+import {
+    Search, BookOpen, Globe, Download, Bookmark, MessageCircle, Share2, X, BookmarkPlus, Loader2, Map,
+    ShieldCheck,
+    Landmark,
+    Scale,
+    Building2,
+    Users
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/landing/Header';
@@ -10,11 +16,14 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { brainAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
 
+import useGuest from '../hooks/useGuest';
+import useAuthStore from '../store/authStore';
+import GuestBlurredResults from '../components/guest/GuestBlurredResults';
 
 export default function Constitution() {
     const navigate = useNavigate();
     const { t, i18n } = useTranslation('constitution');
-    
+
     const { theme } = useTheme();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPartId, setSelectedPartId] = useState(null);
@@ -26,11 +35,21 @@ export default function Constitution() {
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [sessionId, setSessionId] = useState(null);
     const language = i18n.language;
+    const { isGuest } = useGuest();
+    const updateGuestPrefs = useAuthStore((s) => s.updateGuestPrefs);
+    const setGuestIntent = useAuthStore((s) => s.setGuestIntent);
 
     // Enhanced Constitution Data with more articles
-    
+    const partIcons = {
+        1: <Map size={40} />,
+        3: <ShieldCheck size={40} />,
+        4: <Landmark size={40} />,
+        5: <Scale size={40} />,
+        6: <Building2 size={40} />,
+        9: <Users size={40} />,
+    };
 
-    
+
     const parts = useMemo(() => {
         return i18n.getResource(
             i18n.language,
@@ -51,7 +70,7 @@ export default function Constitution() {
         );
     }, [selectedPart, selectedArticleNumber]);
 
-    
+
     const filteredParts = parts.filter(part =>
         part.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         part.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -59,6 +78,58 @@ export default function Constitution() {
             article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             article.content.toLowerCase().includes(searchQuery.toLowerCase())
         )
+    );
+
+    const searchMatches = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return [];
+
+        const matches = [];
+        parts.forEach((part) => {
+            part.articles.forEach((article) => {
+                if (
+                    article.title.toLowerCase().includes(q) ||
+                    article.content.toLowerCase().includes(q) ||
+                    part.title.toLowerCase().includes(q)
+                ) {
+                    matches.push({
+                        ...article,
+                        partTitle: part.title,
+                        matchId: `${part.id}-${article.number}`,
+                    });
+                }
+            });
+        });
+        return matches;
+    }, [parts, searchQuery]);
+
+    useEffect(() => {
+        if (isGuest) {
+            updateGuestPrefs({ visitedConstitution: true });
+        }
+    }, [isGuest, updateGuestPrefs]);
+
+    const handleGuestSignUp = () => {
+        setGuestIntent({ path: '/constitution', feature: 'view all search matches' });
+        navigate('/signup', { state: { from: { pathname: '/constitution' } } });
+    };
+
+    const renderSearchMatchCard = (article, _index, isLockedPreview) => (
+        <div
+            className={`guest-search-card${isLockedPreview ? ' guest-search-card--locked' : ''}`}
+            onClick={isLockedPreview ? undefined : () => { setSelectedPartId(article.partId); setSelectedArticleNumber(article.number); }}
+            onKeyDown={isLockedPreview ? undefined : (e) => { if (e.key === 'Enter') { setSelectedPartId(article.partId); setSelectedArticleNumber(article.number); } }}
+            role={isLockedPreview ? undefined : 'button'}
+            tabIndex={isLockedPreview ? undefined : 0}
+        >
+            <span className="guest-search-card__part">{article.partTitle}</span>
+            <h3 style={{ color: 'var(--color-primary)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 0.45rem', lineHeight: 1.35 }}>
+                {t('article')} {article.number}: {article.title}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, margin: 0 }}>
+                {article.content.substring(0, 140)}…
+            </p>
+        </div>
     );
 
     const toggleBookmark = (article) => {
@@ -100,6 +171,10 @@ export default function Constitution() {
                 <div style={{
                     padding: '3rem',
                     background: 'var(--bg-glass)',
+                    backgroundImage: "url('/assets/constitution.png')",
+                    backgroundPosition: 'center',
+                    backgroundSize: "cover",
+                    backgroundRepeat: "no-repeat",
                     backdropFilter: 'blur(20px)',
                     WebkitBackdropFilter: 'blur(20px)',
                     border: '1px solid var(--border-light)',
@@ -247,7 +322,7 @@ export default function Constitution() {
                 <div style={{ display: 'grid', gridTemplateColumns: showAIChat ? '1fr 400px' : '1fr', gap: '2rem' }}>
                     {/* Main Content */}
                     <div>
-                        {selectedArticleNumber && selectedArticle  ? (
+                        {selectedArticleNumber && selectedArticle ? (
                             // Article Detail View
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
@@ -448,6 +523,35 @@ export default function Constitution() {
                                     ))}
                                 </div>
                             </div>
+                        ) : searchQuery.trim() && searchMatches.length > 0 ? (
+                            <div>
+                                <p className="guest-search-banner">
+                                    <Search size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                                    <span>
+                                        <strong style={{ color: 'var(--text-main)' }}>{searchMatches.length}</strong>
+                                        {' '}article{searchMatches.length > 1 ? 's' : ''} found
+                                        {isGuest && ' · Showing a preview — sign up for full results'}
+                                    </span>
+                                </p>
+                                {isGuest ? (
+                                    <GuestBlurredResults
+                                        items={searchMatches.map((m) => ({ ...m, id: m.matchId }))}
+                                        renderItem={renderSearchMatchCard}
+                                        onSignUp={handleGuestSignUp}
+                                        signUpLabel="Sign up to view all matches"
+                                    />
+                                ) : (
+                                    <div style={{ display: 'grid', gap: '1rem' }}>
+                                        {searchMatches.map((article, idx) => (
+                                            <div key={article.matchId}>{renderSearchMatchCard(article, idx, false)}</div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : searchQuery.trim() ? (
+                            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
+                                {language === 'en' ? 'No articles matched your search.' : 'आपकी खोज से कोई अनुच्छेद मेल नहीं खाता।'}
+                            </p>
                         ) : (
                             // Parts List View
                             <div style={{
@@ -496,6 +600,22 @@ export default function Constitution() {
                                             color: '#FFFFFF'
                                         }}>
                                             {part.articles.length} {t('constitution:articles')}
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                width: '72px',
+                                                height: '72px',
+                                                borderRadius: '20px',
+                                                background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: '#4F46E5',
+                                                marginBottom: '1.5rem',
+                                            }}
+                                        >
+                                            {partIcons[part.id] || <BookOpen size={40} />}
                                         </div>
 
                                         <h3 style={{ color: 'var(--color-primary)', fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem', lineHeight: '1.3', paddingRight: '3rem' }}>
@@ -671,7 +791,7 @@ export default function Constitution() {
                                             {bookmarks.map((bookmark, idx) => (
                                                 <div
                                                     key={idx}
-                                                    onClick={() => setSelectedArticle(bookmark)}
+                                                    onClick={() => setSelectedArticleNumber(bookmark.number)}
                                                     style={{
                                                         padding: '0.75rem',
                                                         background: 'rgba(30, 42, 68, 0.05)',

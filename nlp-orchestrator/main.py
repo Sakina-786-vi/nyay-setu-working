@@ -33,8 +33,10 @@ from cache import (
 from config import FRONTEND_ORIGIN, GROQ_API_KEY, GROQ_MODEL_FAST, GEMINI_API_KEY, GEMINI_MODEL
 from decomposer import decompose_query
 from router import route_questions
-from research import run_parallel_research
+from research import run_parallel_research, execute_with_fallback
 from synthesizer import synthesize_answers
+from research import run_parallel_research, stream_groq_chat
+from synthesizer import synthesize_answers, stream_synthesize_answers
 from validators.citation_validator import validate_citations_from_text
 from avatar_speech import get_interim_messages, convert_to_hinglish, detect_domain
 from services.kanoon_search import build_kanoon_context
@@ -233,8 +235,15 @@ async def legal_reasoning_pipeline(query: str, language: str):
         yield sse_event("synthesis_start", {})
         yield sse_event("avatar_update", {"message": "Sab information mila di, ab aapke liye summary bana raha hoon..."})
 
-        logger.info("[Layer 4] Synthesizing...")
-        synthesized_md = await synthesize_answers(safe_query, results)
+        logger.info("[Layer 4] Synthesizing with streaming...")
+        
+        synthesized_md = ""
+        # Stream synthesis tokens directly
+        async for token in stream_synthesize_answers(safe_query, results):
+            synthesized_md += token
+            yield sse_event("synthesis_token", {"chunk": token})
+        
+        logger.info("[Layer 4] Synthesis complete")
 
         try:
             validation_results = validate_citations_from_text(synthesized_md)
@@ -314,11 +323,14 @@ async def analyze_stream(body: LegalQuery, request: Request):
     async def event_generator():
         pipeline = legal_reasoning_pipeline(body.query, body.language)
 
-        async for event in pipeline:
-            if await request.is_disconnected():
-                logger.info("[Stream] Client disconnected")
-                break
-            yield {"data": event}
+        try:
+            async for event in pipeline:
+                if await request.is_disconnected():
+                    logger.info("[Stream] Client disconnected")
+                    break
+                yield {"data": event}
+        finally:
+            await pipeline.aclose()
 
     return EventSourceResponse(event_generator())
 
@@ -519,40 +531,59 @@ async def deep_research_pipeline(query: str, language: str):
             user_query=query
         )
 
-        # Call the AI model and stream reasoning
         ai_answer = None
+        cached = False
 
         if model_choice == "gemini" and gemini_client:
-            try:
-                loop = asyncio.get_running_loop()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: gemini_client.models.generate_content(
-                        model=GEMINI_MODEL,
-                        contents=grounded_prompt
-                    )
-                )
-
-                ai_answer = response.text.strip()
-
-            except Exception as e:
-                logger.error(f"Gemini failed, falling back to Groq: {e}")
-                model_choice = "groq"
-        if model_choice == "groq" or (
-            model_choice == "gemini" and not gemini_client
-        ):
-
-            response = await groq_client.chat.completions.create(
-                model=GROQ_MODEL_FAST,
-                messages=[
-                    {"role": "system", "content": grounded_prompt},
-                    {"role": "user", "content": query}
-                ],
-                temperature=0.2,
-                max_tokens=2048
+            cache_key = generate_cache_key(
+                "gemini",
+                grounded_prompt,
+                GEMINI_MODEL,
+                user_query=query
             )
+            cached_response = get_cached_response(cache_key)
+            if cached_response:
+                logger.info("[Deep Research] Gemini cache hit")
+                ai_answer = cached_response
+                cached = True
 
-            ai_answer = response.choices[0].message.content.strip()
+        if not cached and (model_choice == "groq" or (model_choice == "gemini" and not gemini_client)):
+            cache_key = generate_cache_key(
+                "groq",
+                grounded_prompt,
+                GROQ_MODEL_FAST,
+                user_query=query
+            )
+            cached_response = get_cached_response(cache_key)
+            if cached_response:
+                logger.info("[Deep Research] Groq cache hit")
+                ai_answer = cached_response
+                cached = True
+
+        if not cached:
+            # Use the unified fallback coordinator for deep research to avoid
+            # duplicating retry/fallback logic between Gemini and Groq.
+            result = await execute_with_fallback(query, kanoon_context, primary_provider=model_choice)
+            ai_answer = result.get("answer", "")
+            model_choice = result.get("source", model_choice)
+
+            if ai_answer:
+                if model_choice == "gemini":
+                    cache_key = generate_cache_key(
+                        "gemini",
+                        grounded_prompt,
+                        GEMINI_MODEL,
+                        user_query=query
+                    )
+                    set_cached_response(cache_key, ai_answer)
+                elif model_choice == "groq":
+                    cache_key = generate_cache_key(
+                        "groq",
+                        grounded_prompt,
+                        GROQ_MODEL_FAST,
+                        user_query=query
+                    )
+                    set_cached_response(cache_key, ai_answer)
 
         # Stream reasoning text in chunks for live display
         if ai_answer:
@@ -639,11 +670,14 @@ async def deep_research(body: LegalQuery, request: Request):
     async def event_generator():
         pipeline = deep_research_pipeline(body.query, body.language)
 
-        async for event in pipeline:
-            if await request.is_disconnected():
-                logger.info("[Deep Research] Client disconnected")
-                break
-            yield {"data": event}
+        try:
+            async for event in pipeline:
+                if await request.is_disconnected():
+                    logger.info("[Deep Research] Client disconnected")
+                    break
+                yield {"data": event}
+        finally:
+            await pipeline.aclose()
 
     return EventSourceResponse(event_generator())
 

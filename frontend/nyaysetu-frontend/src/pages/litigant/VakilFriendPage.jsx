@@ -199,7 +199,7 @@ export default function VakilFriendChat() {
             }]);
         } catch (err) {
             console.error('Failed to start session:', err);
-            setError('Failed to connect. Please make sure the backend is running.');
+            setError(t('vakilFriend.connectError'));
             setMessages([{
                 role: 'assistant',
                 content: t('vakilFriend.offlineMessage')
@@ -236,7 +236,7 @@ export default function VakilFriendChat() {
 
     const sendMessage = async (audioData = null, overrideText = null) => {
         const textToSend = overrideText || inputMessage;
-        if ((!textToSend.trim() && !audioData) || isLoading) return;
+        if ((!textToSend.trim() && !audioData) || isLoading || isStarting) return;
 
         const userMessage = textToSend.trim();
         // Only clear the input message box if we aren't overriding it (standard UI flow)
@@ -273,9 +273,7 @@ export default function VakilFriendChat() {
                 ocrContext: documentContext
             };
 
-            const response = await axios.post(`${API_BASE_URL}/api/vakil-friend/chat/${sessionId}`, payload, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
+            const response = await vakilFriendAPI.sendMessage(sessionId, payload);
 
             const data = response.data;
 
@@ -395,6 +393,10 @@ export default function VakilFriendChat() {
 
             case 'reasoning':
                 setReasoningText(prev => prev + (prev ? ' ' : '') + payload.text);
+                break;
+
+            case 'synthesis_token':
+                setReasoningText(prev => prev + payload.chunk);
                 break;
 
             case 'avatar_speak':
@@ -639,8 +641,8 @@ export default function VakilFriendChat() {
 
             // Build success message with all details
             let successMessage = `✅ **Case Filed Successfully!**\n\n`;
-            successMessage += `📋 **Case ID:** ${data.caseId}\n`;
-            successMessage += `📝 **Title:** ${data.caseTitle}\n`;
+            successMessage += `📋 **Case ID:** ${data.id}\n`;
+             successMessage += `📝 **Title:** ${data.title}\n`;
             successMessage += `🏷️ **Type:** ${data.caseType}\n`;
             successMessage += `⚡ **Urgency:** ${data.urgency}\n`;
             successMessage += `👤 **Petitioner:** ${data.petitioner}\n`;
