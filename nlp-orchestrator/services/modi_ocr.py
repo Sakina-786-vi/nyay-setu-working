@@ -76,15 +76,19 @@ def _load_model() -> tuple[Any, Any, Any]:
 
             token = HF_TOKEN or None
             logger.info("Loading TrOCR model '%s' for Modi OCR.", TROCR_MODEL_NAME)
-
-            processor = TrOCRProcessor.from_pretrained(TROCR_MODEL_NAME, token=token, use_fast=False)
+            
+            try:
+                _processor = TrOCRProcessor.from_pretrained(TROCR_MODEL_NAME, token=token, use_fast=True)
+            except Exception as proc_exc:
+                logger.warning("Fast tokenizer load failed for '%s' (%s); retrying with use_fast=False.", TROCR_MODEL_NAME, proc_exc)
+                _processor = TrOCRProcessor.from_pretrained(TROCR_MODEL_NAME, token=token, use_fast=False)
+            
             model = VisionEncoderDecoderModel.from_pretrained(TROCR_MODEL_NAME, token=token)
             device = _resolve_device(torch)
 
             model.to(device)
             model.eval()
 
-            _processor = processor
             _model = model
             _device = device
 
